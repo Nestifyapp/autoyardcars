@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed": "node --env-file=.env.local --import=tsx scripts/seed.ts",
+    "seed:collections": "node --env-file=.env.local --import=tsx scripts/seed-collections.ts",
     "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit",
     "rules:test": "vitest run tests/rules.test.ts"
   },
