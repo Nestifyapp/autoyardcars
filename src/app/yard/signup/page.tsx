@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { AuthForm } from '@/components/auth/AuthForm';
+
+export default function YardSignupPage() { return <main className="mx-auto max-w-md px-4 py-12"><p className="text-sm font-semibold uppercase tracking-widest text-yard-600">For car yards</p><h1 className="mt-2 font-display text-3xl font-bold">Create your yard account</h1><p className="mt-2 text-sm text-ink-muted">Set up your account first, then add your yard details for verification.</p><div className="mt-6"><AuthForm mode="signup" /></div><p className="mt-4 text-center text-sm text-ink-muted">Already registered? <Link href="/yard/login" className="font-semibold text-yard-600 hover:underline">Sign in</Link></p></main>; }

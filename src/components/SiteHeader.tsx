@@ -12,10 +12,9 @@ export function SiteHeader() {
           <Link href="/cars" className="hover:text-yard-600">Browse cars</Link>
           <Link href="/financing" className="hover:text-yard-600">Financing</Link>
           <Link href="/sell/dealer" className="hover:text-yard-600">List your stock</Link>
+          <Link href="/yard/login" className="hover:text-yard-600">Yard login</Link>
         </nav>
-        <Link href="/cars" className="rounded-lg bg-yard-500 px-3 py-2 text-sm font-semibold text-white hover:bg-yard-600">
-          Find a car
-        </Link>
+        <div className="flex items-center gap-2"><Link href="/yard/signup" className="hidden rounded-lg border border-yard-500 px-3 py-2 text-sm font-semibold text-yard-700 hover:bg-yard-50 sm:inline-flex">Add your yard</Link><Link href="/cars" className="rounded-lg bg-yard-500 px-3 py-2 text-sm font-semibold text-white hover:bg-yard-600">Find a car</Link></div>
       </div>
     </header>
   );
