@@ -63,6 +63,7 @@ export function VehicleCard({ vehicle, position }: { vehicle: Vehicle; position?
           <span className="flex items-center gap-1 rounded-full bg-sky-50 px-2 py-1 capitalize text-sky-700"><CarFront className="h-3.5 w-3.5" aria-hidden />{vehicle.bodyType.replace('_', ' ')}</span>
           <span className="flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-violet-700"><UsersRound className="h-3.5 w-3.5" aria-hidden />{vehicle.seats} seats</span>
           <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 capitalize text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" aria-hidden />{vehicle.condition.replace('_', ' ')}</span>
+          {(vehicle.groupings ?? []).slice(0, 2).map(grouping => <span key={grouping} className="rounded-full bg-orange-50 px-2 py-1 capitalize text-orange-700">{grouping.replaceAll('_', ' ')}</span>)}
         </div>
         <div className="flex items-center gap-1.5 border-t border-line pt-2 text-xs text-ink-muted">
           <span className="truncate">{vehicle.dealerSnapshot.name}</span>

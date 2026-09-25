@@ -3,6 +3,8 @@ import { getSearchProvider } from '@/lib/services/search';
 import { VehicleCard } from '@/components/marketplace/VehicleCard';
 import { BodyTypeTiles, BrowseLinks, VehicleSearch } from '@/components/marketplace/VehicleSearch';
 import { brand } from '@/lib/brand';
+import { GroupingSection } from '@/components/marketplace/GroupingSection';
+import type { Vehicle, VehicleGrouping } from '@/lib/domain/types';
 
 export const revalidate = 120;
 
@@ -13,6 +15,11 @@ export default async function HomePage() {
   } catch (error) {
     console.error('[home] Vehicle search unavailable:', error);
   }
+  const groupings: VehicleGrouping[] = ['luxury_executive', 'uber_ready', 'fresh_import', 'locally_used', 'low_mileage', 'hot_today', 'original_paint'];
+  const grouped = await Promise.all(groupings.map(async grouping => {
+    try { return [grouping, (await getSearchProvider().searchVehicles({ grouping, sort: 'newest', limit: 60 })).items] as const; }
+    catch (error) { console.error(`[home] Grouping ${grouping} unavailable:`, error); return [grouping, [] as Vehicle[]] as const; }
+  }));
 
   return (
     <main>
@@ -46,6 +53,7 @@ export default async function HomePage() {
           <div><h2 className="font-display text-lg font-bold">Search by area</h2><p className="mt-2 text-sm leading-6 text-ink-muted">Find cars near Kangundo Road, Nairobi and beyond.</p></div>
         </div>
       </section>
+      {grouped.map(([grouping, vehicles]) => <GroupingSection key={grouping} grouping={grouping} vehicles={vehicles} />)}
     </main>
   );
 }

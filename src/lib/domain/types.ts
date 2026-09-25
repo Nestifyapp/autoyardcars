@@ -135,6 +135,10 @@ export type BodyType =
   | 'hatchback' | 'sedan' | 'saloon' | 'suv' | 'crossover' | 'station_wagon'
   | 'pickup' | 'van' | 'minivan' | 'bus' | 'truck' | 'coupe' | 'convertible';
 export type VehicleCondition = 'brand_new' | 'foreign_used' | 'locally_used';
+export type VehicleUsageType = 'brand_new' | 'foreign_used' | 'locally_used';
+export type VehicleGrouping =
+  | 'uber_ready' | 'low_mileage' | 'fresh_import' | 'hot_today'
+  | 'locally_used' | 'luxury_executive' | 'under_50k_miles' | 'original_paint';
 
 export interface Vehicle {
   id: string;
@@ -170,6 +174,12 @@ export interface Vehicle {
   seats?: number;
   doors?: number;
   condition: VehicleCondition;
+  /** Optional grouping metadata; older listings may not have these fields. */
+  usageType?: VehicleUsageType;
+  isOriginalPaint?: boolean;
+  isLuxury?: boolean;
+  groupings?: VehicleGrouping[];
+  isSponsored?: boolean;
 
   origin: { locallyUsed: boolean; imported: boolean; importedFrom?: string };
   dutyStatus?: 'duty_paid' | 'duty_not_paid' | 'not_applicable';

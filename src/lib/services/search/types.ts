@@ -1,4 +1,4 @@
-import type { BodyType, FuelType, Transmission, Vehicle } from '@/lib/domain/types';
+import type { BodyType, FuelType, Transmission, Vehicle, VehicleGrouping, VehicleUsageType } from '@/lib/domain/types';
 
 export interface VehicleQuery {
   q?: string;
@@ -11,6 +11,9 @@ export interface VehicleQuery {
   locationPath?: string;          // prefix match: 'ke/nairobi'
   dealershipId?: string;
   collection?: string;            // collection slug
+  grouping?: VehicleGrouping;
+  usageType?: VehicleUsageType;
+  sponsoredOnly?: boolean;
   financingAvailable?: boolean;
   verifiedDealerOnly?: boolean;
   sort?: 'newest' | 'price_asc' | 'price_desc' | 'mileage_asc';

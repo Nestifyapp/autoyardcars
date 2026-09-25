@@ -12,6 +12,7 @@
 import { adminDb, col } from '../src/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { BodyType, FuelType, Transmission, VehicleCondition } from '../src/lib/domain/types';
+import { computeCarGroupings } from '../src/lib/domain/groupings';
 
 const now = FieldValue.serverTimestamp();
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -272,6 +273,10 @@ async function run() {
     const title = `${year} ${make} ${model} ${variant}`.trim();
     const id = `${slugify(`${year}-${make}-${model}`)}-${(index + 101).toString(36)}`;
     const images = demoImages(title, index);
+    const isOriginalPaint = index % 4 === 0;
+    const isLuxury = ['Mercedes-Benz', 'BMW'].includes(make) || price >= 4_000_000;
+    const metrics = { impressions: 0, detailViews: 0, whatsappClicks: 0, callClicks: 0, financingClicks: 0, leads: 0 };
+    const groupings = computeCarGroupings({ make, model, price, mileageKm: mileage, condition, usageType: condition, isOriginalPaint, isLuxury, metrics, createdAt: new Date() });
     const collectionSlugs = COLLECTIONS.filter(c => c.rules.every(rule => {
       const value = { yearOfManufacture: year, bodyType, seats, price, engineCapacityCc: cc, fuelType, financingEligible: price >= 500_000 }[rule.field as string];
       switch (rule.operator) {
@@ -293,6 +298,7 @@ async function run() {
       yearOfManufacture: year, price, currency: 'KES', negotiable: index % 3 !== 0,
       mileageKm: mileage, transmission, engineCapacityCc: cc, fuelType, bodyType, seats, doors: bodyType === 'pickup' ? 4 : 5,
       condition, origin: { locallyUsed: condition === 'locally_used', imported: condition === 'foreign_used' },
+      usageType: condition, isOriginalPaint, isLuxury, groupings,
       dutyStatus: 'duty_paid', registrationStatus: 'registered', logbookAvailable: true,
       previousOwners: condition === 'locally_used' ? 1 : 0,
       inspection: { status: 'none' },
@@ -303,7 +309,7 @@ async function run() {
       location: { locationId: location.id, locationPath: location.path, locationName: location.name },
       collectionSlugs, boost: { active: false, placements: [] },
       status: 'active',
-      metrics: { impressions: 0, detailViews: 0, whatsappClicks: 0, callClicks: 0, financingClicks: 0, leads: 0 },
+      metrics,
       searchTokens: tokens(make, model, variant, year, bodyType, fuelType, location.name),
       sampleData: true,
       createdAt: now, updatedAt: now, publishedAt: now,

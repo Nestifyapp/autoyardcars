@@ -2,6 +2,7 @@ import 'server-only';
 import { adminDb, col } from '@/lib/firebase/admin';
 import type { SearchProvider, VehicleQuery, VehicleSearchResult } from './types';
 import type { Vehicle } from '@/lib/domain/types';
+import { computeCarGroupings } from '@/lib/domain/groupings';
 
 const SORTS: Record<NonNullable<VehicleQuery['sort']>, [string, FirebaseFirestore.OrderByDirection]> = {
   newest: ['publishedAt', 'desc'],
@@ -28,6 +29,7 @@ export const firestoreSearchProvider: SearchProvider = {
     if (query.fuelType) ref = ref.where('fuelType', '==', query.fuelType);
     if (query.transmission) ref = ref.where('transmission', '==', query.transmission);
     if (query.collection) ref = ref.where('collectionSlugs', 'array-contains', query.collection);
+    if (query.sponsoredOnly) ref = ref.where('isSponsored', '==', true);
     if (query.financingAvailable) ref = ref.where('financingEligible', '==', true);
     if (query.verifiedDealerOnly) ref = ref.where('dealerSnapshot.verified', '==', true);
     if (query.locationPath) {
@@ -50,7 +52,10 @@ export const firestoreSearchProvider: SearchProvider = {
     if (query.cursor) ref = ref.startAfter(...JSON.parse(Buffer.from(query.cursor, 'base64').toString()));
 
     const snap = await ref.limit(limit).get();
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Vehicle);
+    const items = snap.docs.map(d => {
+      const vehicle = ({ id: d.id, ...d.data() }) as Vehicle;
+      return { ...vehicle, groupings: computeCarGroupings(vehicle) };
+    });
 
     // Year/mileage/seat ranges are applied in memory: Firestore allows range
     // filters on one field per query. Move to Algolia/Typesense as volume grows.
@@ -58,7 +63,9 @@ export const firestoreSearchProvider: SearchProvider = {
       (query.yearMin == null || v.yearOfManufacture >= query.yearMin) &&
       (query.yearMax == null || v.yearOfManufacture <= query.yearMax) &&
       (query.mileageMax == null || (v.mileageKm ?? 0) <= query.mileageMax) &&
-      (query.seatsMin == null || (v.seats ?? 0) >= query.seatsMin));
+      (query.seatsMin == null || (v.seats ?? 0) >= query.seatsMin) &&
+      (query.grouping == null || v.groupings?.includes(query.grouping)) &&
+      (query.usageType == null || (v.usageType ?? v.condition) === query.usageType));
 
     const last = snap.docs.at(-1);
     return {

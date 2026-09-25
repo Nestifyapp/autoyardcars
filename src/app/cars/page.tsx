@@ -21,6 +21,7 @@ function toQuery(params: Params): VehicleQuery {
     fuelType: params.fuelType as VehicleQuery['fuelType'],
     transmission: params.transmission as VehicleQuery['transmission'],
     locationPath: params.location, collection: params.collection,
+    grouping: params.grouping as VehicleQuery['grouping'], usageType: params.usageType as VehicleQuery['usageType'],
     financingAvailable: params.financing === 'true',
     verifiedDealerOnly: params.verified === 'true',
     sort: (params.sort as VehicleQuery['sort']) ?? 'newest',
