@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Uploads are tenant-scoped by path: /dealerships/{dealershipId}/...
+// Type and size are validated here and re-validated server-side before the
+// media document is written.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isSuperAdmin() { return signedIn() && request.auth.token.super_admin == true; }
+    function isMember(dealershipId) {
+      return signedIn() && firestore.exists(
+        /databases/(default)/documents/dealership_members/$(dealershipId + '_' + request.auth.uid));
+    }
+    function isImage() { return request.resource.contentType.matches('image/(jpeg|png|webp|avif)'); }
+    function withinSize(mb) { return request.resource.size < mb * 1024 * 1024; }
+
+    match /dealerships/{dealershipId}/branding/{file} {
+      allow read: if true;
+      allow write: if (isMember(dealershipId) || isSuperAdmin()) && isImage() && withinSize(5);
+    }
+    match /dealerships/{dealershipId}/vehicles/{vehicleId}/{file} {
+      allow read: if true;
+      allow write: if (isMember(dealershipId) || isSuperAdmin()) && isImage() && withinSize(10);
+    }
+    // Verification documents: written by the dealer, readable only by staff.
+    match /dealerships/{dealershipId}/verification/{file} {
+      allow read: if isSuperAdmin();
+      allow write: if (isMember(dealershipId) || isSuperAdmin()) && withinSize(10);
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

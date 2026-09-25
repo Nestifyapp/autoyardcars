@@ -1,0 +1,168 @@
+rules_version = '2';
+
+// Motoyard security model
+// -----------------------
+// Public reads are limited to published marketplace data. Every tenant-scoped
+// write is checked against dealership_members — never against a dealershipId
+// supplied in the payload alone. Privileged workflows (payments, boosts,
+// financing routing, moderation, aggregation) are server-only: no client role
+// can write those collections.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ------------------------------ helpers ------------------------------ */
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function isSuperAdmin() { return signedIn() && request.auth.token.super_admin == true; }
+
+    function memberDoc(dealershipId) {
+      return get(/databases/$(database)/documents/dealership_members/$(dealershipId + '_' + uid()));
+    }
+    function isMember(dealershipId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/dealership_members/$(dealershipId + '_' + uid()))
+        && memberDoc(dealershipId).data.status == 'active';
+    }
+    function memberRole(dealershipId) { return memberDoc(dealershipId).data.role; }
+    function isOwner(dealershipId) { return isMember(dealershipId) && memberRole(dealershipId) == 'dealer_owner'; }
+    function canWriteInventory(dealershipId) {
+      return isMember(dealershipId) &&
+        memberRole(dealershipId) in ['dealer_owner', 'dealer_manager', 'dealer_sales'];
+    }
+    function unchanged(field) { return request.resource.data[field] == resource.data[field]; }
+
+    /* ------------------------------- users ------------------------------- */
+    match /users/{userId} {
+      allow read: if isSuperAdmin() || (signedIn() && uid() == userId);
+      allow create: if signedIn() && uid() == userId
+        && request.resource.data.platformRole == 'buyer'
+        && request.resource.data.dealershipIds.size() == 0;
+      // Self-service role escalation is impossible: platformRole and dealershipIds
+      // are maintained by the Admin SDK only.
+      allow update: if isSuperAdmin() ||
+        (signedIn() && uid() == userId && unchanged('platformRole') && unchanged('dealershipIds'));
+      allow delete: if isSuperAdmin();
+    }
+
+    /* ---------------------------- dealerships ---------------------------- */
+    match /dealerships/{dealershipId} {
+      // Public storefronts: only verified, non-deleted yards.
+      allow read: if resource.data.status == 'verified' && resource.data.deletedAt == null
+        || isMember(dealershipId) || isSuperAdmin();
+
+      allow create: if isSuperAdmin(); // onboarding runs server-side (self-signup + white-glove)
+
+      // Dealers edit their profile but never their own verification or plan.
+      allow update: if isSuperAdmin() || (
+        isOwner(dealershipId)
+        && unchanged('status') && unchanged('verification')
+        && unchanged('subscription') && unchanged('ownerUserId') && unchanged('slug')
+      );
+      allow delete: if false; // soft delete only
+    }
+
+    match /dealership_members/{memberId} {
+      allow read: if isSuperAdmin() || (signedIn() && (resource.data.userId == uid() || isMember(resource.data.dealershipId)));
+      allow write: if isSuperAdmin(); // invitations/role changes go through the server
+    }
+
+    /* ------------------------------ vehicles ----------------------------- */
+    match /vehicles/{vehicleId} {
+      allow read: if resource.data.status in ['active', 'reserved', 'sold']
+        || isMember(resource.data.dealershipId) || isSuperAdmin();
+
+      allow create: if isSuperAdmin() || (
+        canWriteInventory(request.resource.data.dealershipId)
+        // A dealer can only ever create a draft; publishing is a server transition
+        // so plan limits and moderation cannot be bypassed.
+        && request.resource.data.status == 'draft'
+        && request.resource.data.metrics.detailViews == 0
+      );
+
+      allow update: if isSuperAdmin() || (
+        canWriteInventory(resource.data.dealershipId)
+        && unchanged('dealershipId')
+        && request.resource.data.status in ['draft', 'pending_approval', 'reserved', 'sold', 'archived']
+        && request.resource.data.metrics == resource.data.metrics
+        && request.resource.data.boost == resource.data.boost
+      );
+
+      allow delete: if isSuperAdmin();
+    }
+
+    match /vehicle_media/{mediaId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || canWriteInventory(request.resource.data.dealershipId);
+    }
+
+    /* ---------------- public reference data: read-only to clients --------- */
+    match /locations/{id}            { allow read: if true; allow write: if isSuperAdmin(); }
+    match /makes/{id}                { allow read: if true; allow write: if isSuperAdmin(); }
+    match /models/{id}               { allow read: if true; allow write: if isSuperAdmin(); }
+    match /marketplace_collections/{id} { allow read: if true; allow write: if isSuperAdmin(); }
+    match /subscription_plans/{id}   { allow read: if true; allow write: if isSuperAdmin(); }
+    match /boost_products/{id}       { allow read: if true; allow write: if isSuperAdmin(); }
+    match /financiers/{id}           { allow read: if resource.data.active == true || isSuperAdmin(); allow write: if isSuperAdmin(); }
+    match /financing_products/{id}   { allow read: if resource.data.active == true || isSuperAdmin(); allow write: if isSuperAdmin(); }
+
+    /* -------------------------------- leads ------------------------------ */
+    match /leads/{leadId} {
+      allow read: if isSuperAdmin() || isMember(resource.data.dealershipId);
+      // Buyer submissions go through /api/leads: validated, rate limited, attributed.
+      allow create: if false;
+      allow update: if isSuperAdmin() || (
+        isMember(resource.data.dealershipId)
+        && unchanged('dealershipId') && unchanged('source') && unchanged('createdAt')
+      );
+      allow delete: if isSuperAdmin();
+    }
+    match /lead_events/{id} {
+      allow read: if isSuperAdmin() || isMember(resource.data.dealershipId);
+      allow write: if false;
+    }
+
+    /* ---------------------------- buyer records --------------------------- */
+    match /favourites/{favouriteId} {
+      allow read, delete: if signedIn() && resource.data.userId == uid();
+      allow create: if signedIn() && request.resource.data.userId == uid();
+      allow update: if false;
+    }
+
+    /* ------------------- financing, billing, moderation ------------------- */
+    // Applications contain personal data: dealers see only their own, buyers none.
+    match /financing_applications/{id} {
+      allow read: if isSuperAdmin() || (resource.data.dealershipId != null && isMember(resource.data.dealershipId));
+      allow write: if false; // created and routed server-side
+    }
+    match /dealer_subscriptions/{id} {
+      allow read: if isSuperAdmin() || isMember(resource.data.dealershipId);
+      allow write: if false;
+    }
+    match /vehicle_boosts/{id} {
+      allow read: if isSuperAdmin() || isMember(resource.data.dealershipId);
+      allow write: if false; // activation follows confirmed payment only
+    }
+    match /payment_transactions/{id} {
+      allow read: if isSuperAdmin() || isMember(resource.data.dealershipId);
+      allow write: if false;
+    }
+    match /listing_reports/{id} {
+      allow read: if isSuperAdmin();
+      allow create: if false; // /api/reports applies rate limiting and spam checks
+      allow update, delete: if isSuperAdmin();
+    }
+    match /admin_audit_logs/{id} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // append-only from the Admin SDK
+    }
+    match /analytics_events/{id} {
+      allow read: if isSuperAdmin();
+      allow write: if false; // /api/analytics batches and validates
+    }
+    match /rate_limits/{id} { allow read, write: if false; }
+
+    // Anything not matched above is denied.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
