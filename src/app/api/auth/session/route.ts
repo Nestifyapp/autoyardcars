@@ -12,7 +12,14 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ ok: true });
     response.cookies.set('__session', sessionCookie, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: SESSION_MAX_AGE / 1000, path: '/' });
     return response;
-  } catch {
-    return NextResponse.json({ error: 'Could not create a secure session.' }, { status: 401 });
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    console.error('[auth/session] Firebase session exchange failed:', code ?? error);
+    const message = code === 'auth/id-token-expired'
+      ? 'Your sign-in expired. Please sign in again.'
+      : code === 'auth/id-token-revoked'
+        ? 'Your sign-in was revoked. Please sign in again.'
+        : 'The server could not verify this Firebase project. Check App Hosting Firebase Admin credentials.';
+    return NextResponse.json({ error: message }, { status: 401 });
   }
 }

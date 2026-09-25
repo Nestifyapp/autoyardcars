@@ -16,7 +16,10 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       if (mode === 'signup' && name.trim()) await updateProfile(credentials.user, { displayName: name.trim() });
       const idToken = await credentials.user.getIdToken(true);
       const response = await fetch('/api/auth/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ idToken }) });
-      if (!response.ok) throw new Error('Could not start your secure session.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? 'Could not start your secure session.');
+      }
       router.push(mode === 'signup' ? '/yard/onboarding' : '/yard/listings'); router.refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Authentication failed.'); setBusy(false); }
   };
