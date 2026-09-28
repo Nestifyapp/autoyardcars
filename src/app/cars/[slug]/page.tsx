@@ -33,7 +33,7 @@ export default async function VehiclePage({ params }: { params: { slug: string }
   const [productsSnap, similarSnap] = await Promise.all([
     adminDb.collection(col.financingProducts).where('active', '==', true).get(),
     adminDb.collection(col.vehicles).where('status', '==', 'active').where('bodyType', '==', vehicle.bodyType)
-      .orderBy('publishedAt', 'desc').limit(7).get(),
+      .orderBy('createdAt', 'desc').limit(7).get(),
   ]);
 
   const products = productsSnap.docs

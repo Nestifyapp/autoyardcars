@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let collections: FirebaseFirestore.QuerySnapshot;
   try {
     [vehicles, dealers, locations, collections] = await Promise.all([
-      adminDb.collection(col.vehicles).where('status', '==', 'active').orderBy('publishedAt', 'desc').limit(20_000).get(),
+      adminDb.collection(col.vehicles).where('status', '==', 'active').orderBy('createdAt', 'desc').limit(20_000).get(),
       adminDb.collection(col.dealerships).where('status', '==', 'verified').get(),
       adminDb.collection(col.locations).where('active', '==', true).get(),
       adminDb.collection(col.collections).where('active', '==', true).get(),

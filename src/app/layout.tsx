@@ -4,10 +4,11 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+import { brand } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Motoyard',
-  description: 'Find verified vehicles across Kenya.',
+  title: brand.name,
+  description: brand.tagline,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

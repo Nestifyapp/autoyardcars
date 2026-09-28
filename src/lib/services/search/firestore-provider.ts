@@ -5,7 +5,7 @@ import type { Vehicle } from '@/lib/domain/types';
 import { computeCarGroupings } from '@/lib/domain/groupings';
 
 const SORTS: Record<NonNullable<VehicleQuery['sort']>, [string, FirebaseFirestore.OrderByDirection]> = {
-  newest: ['publishedAt', 'desc'],
+  newest: ['createdAt', 'desc'],
   price_asc: ['price', 'asc'],
   price_desc: ['price', 'desc'],
   mileage_asc: ['mileageKm', 'asc'],

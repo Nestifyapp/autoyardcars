@@ -2,11 +2,29 @@ import Link from 'next/link';
 import { VehicleCard } from './VehicleCard';
 import type { Vehicle, VehicleGrouping } from '@/lib/domain/types';
 
-const labels: Record<VehicleGrouping, string> = {
-  luxury_executive: 'Luxury & Executive', uber_ready: 'Ride-share ready', fresh_import: 'Fresh off the ship', locally_used: 'Locally loved', low_mileage: 'Low-mile gems', under_50k_miles: 'Under 50k km', hot_today: 'Hot today', original_paint: 'Original paint',
-};
+export const HOME_GROUPINGS: { id: VehicleGrouping; title: string }[] = [
+  { id: 'hot_today', title: 'Hot today' },
+  { id: 'fresh_import', title: 'Fresh arrivals' },
+  { id: 'low_mileage', title: 'Low-mile gems' },
+  { id: 'luxury_executive', title: 'Luxury & Executive' },
+  { id: 'locally_used', title: 'Locally loved' },
+  { id: 'uber_ready', title: 'Ride-share ready' },
+  { id: 'original_paint', title: 'Original paint' },
+];
 
 export function GroupingSection({ grouping, vehicles }: { grouping: VehicleGrouping; vehicles: Vehicle[] }) {
-  if (!vehicles.length) return null;
-  return <section className="mx-auto max-w-7xl px-4 py-8 md:px-6"><div className="flex items-end justify-between gap-4"><div><p className="text-sm font-semibold text-yard-600">Smart grouping</p><h2 className="mt-1 font-display text-2xl font-bold text-ink">{labels[grouping]}</h2></div><Link href={`/cars?grouping=${grouping}`} className="text-sm font-semibold text-yard-600 hover:underline">See all</Link></div><div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{vehicles.slice(0, 4).map((vehicle, index) => <VehicleCard key={vehicle.id} vehicle={vehicle} position={index} />)}</div></section>;
+  if (vehicles.length < 3) return null;
+  const title = HOME_GROUPINGS.find(item => item.id === grouping)?.title ?? grouping;
+
+  return (
+    <section aria-labelledby={`group-${grouping}`} className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+      <div className="flex items-end justify-between gap-4">
+        <h2 id={`group-${grouping}`} className="font-display text-xl font-bold text-ink md:text-2xl">{title}</h2>
+        <Link href={`/cars?grouping=${grouping}`} className="shrink-0 text-sm font-semibold text-yard-600 hover:underline">See all <span aria-hidden="true">→</span></Link>
+      </div>
+      <div className="mt-4 grid auto-cols-[82%] grid-flow-col gap-3 overflow-x-auto pb-3 snap-x snap-mandatory sm:auto-cols-[47%] md:auto-cols-[32%] lg:grid-flow-row lg:auto-cols-auto lg:grid-cols-4 lg:overflow-visible">
+        {vehicles.slice(0, 4).map((vehicle, index) => <VehicleCard key={vehicle.id} vehicle={vehicle} position={index} className="snap-start" />)}
+      </div>
+    </section>
+  );
 }

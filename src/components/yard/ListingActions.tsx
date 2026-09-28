@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Vehicle } from '@/lib/domain/types';
 
-export function ListingActions({ vehicle }: { vehicle: Vehicle }) {
+export function ListingActions({ vehicle }: { vehicle: Pick<Vehicle, 'id' | 'status' | 'isSponsored'> }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const request = async (method: 'PATCH' | 'DELETE', body?: object) => { setBusy(true); await fetch(`/api/yard/listings/${vehicle.id}`, { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined }); router.refresh(); setBusy(false); };
